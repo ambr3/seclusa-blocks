@@ -230,7 +230,7 @@ export class Blockfall {
             this.updateDisplay();
             return;
         }
-        this.lineStreak++;
+        this.lineStreak = Math.min(STREAK_METER_MAX, this.lineStreak + 1);
         this.beginClear(lines);
     }
 
@@ -248,6 +248,7 @@ export class Blockfall {
             100,
             this.startLevel + Math.floor((this.lines + info.fullRows) / LINES_PER_PRESSURE)
         );
+        info.nextPressure = previewPressure;
         info.pressureUp = previewPressure > this.level;
         this.triggerClearJuice(info);
         this.updateStreakMeter();
@@ -656,7 +657,7 @@ export class Blockfall {
             msg += ` · ×${this.lineStreak}`;
             this.pulseStreakBox();
         }
-        if (info.pressureUp) msg += ` · P${this.level}`;
+        if (info.pressureUp) msg += ` · P${info.nextPressure}`;
         return msg;
     }
 
@@ -848,13 +849,15 @@ export class Blockfall {
         const syncSoundToggles = () => {
             const music = document.getElementById('musicBtn');
             const sfx = document.getElementById('sfxBtn');
+            const musicOff = this.audio.masterMuted || this.audio.musicMuted;
+            const sfxOff = this.audio.masterMuted || this.audio.sfxMuted;
             if (music) {
-                music.classList.toggle('muted', this.audio.musicMuted);
-                music.setAttribute('aria-pressed', this.audio.musicMuted ? 'false' : 'true');
+                music.classList.toggle('muted', musicOff);
+                music.setAttribute('aria-pressed', musicOff ? 'false' : 'true');
             }
             if (sfx) {
-                sfx.classList.toggle('muted', this.audio.sfxMuted);
-                sfx.setAttribute('aria-pressed', this.audio.sfxMuted ? 'false' : 'true');
+                sfx.classList.toggle('muted', sfxOff);
+                sfx.setAttribute('aria-pressed', sfxOff ? 'false' : 'true');
             }
         };
         document.getElementById('musicBtn')?.addEventListener('click', () => {
@@ -865,6 +868,7 @@ export class Blockfall {
             this.audio.toggleSfx();
             syncSoundToggles();
         });
+        window.addEventListener('blocks-sound', syncSoundToggles);
         syncSoundToggles();
 
         const onViewportChange = () => {

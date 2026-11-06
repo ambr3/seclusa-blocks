@@ -14,11 +14,12 @@
         The app's shared design system first, then this game's own stylesheet, which is
         the order index.html uses. This page is what a player sees when the network is
         gone, so it is the worst possible place for it to render without the palette the
-        rest of the app is in — and the worker precaches ../../theme.css for exactly this
-        document, so the stylesheet is available offline whether or not it is requested.
+        rest of the app is in. The worker precaches theme.css beside this file, so the
+        stylesheet is available offline.
     -->
     <link rel="stylesheet" href="theme.css">
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="stand.css">
 </head>
 <body>
     <!--
@@ -31,10 +32,23 @@
         <p>Offline — this page is not in the cache yet.</p>
         <p>Reconnect once to finish installing, then the game works fully offline.</p>
         <p><a href="./">Try again</a></p>
-        <!--
-            The privacy badge used to sit here. Privacy is a property of the whole app,
-            not of one game, so it is stated once in the launcher's About dialog.
-        -->
     </div>
+    <footer class="game-foot">
+        <p class="game-credits">
+            <a href="LICENSE.txt">GPL-3.0</a>
+            · <a href="https://github.com/ambr3/seclusa-blocks" target="_blank" rel="noopener noreferrer">Source</a>
+            · Made with <span class="heart" role="img" aria-label="love">&#10084;&#65039;</span>
+            <svg class="flag" viewBox="0 0 60 30" role="img" aria-label="United Kingdom">
+                <clipPath id="game-uk-clip"><rect width="60" height="30" /></clipPath>
+                <g clip-path="url(#game-uk-clip)">
+                    <rect width="60" height="30" fill="#012169" />
+                    <path d="M0,0 L60,30 M60,0 L0,30" stroke="#fff" stroke-width="6" />
+                    <path d="M0,0 L60,30 M60,0 L0,30" stroke="#C8102E" stroke-width="4" />
+                    <path d="M30,0 V30 M0,15 H60" stroke="#fff" stroke-width="10" />
+                    <path d="M30,0 V30 M0,15 H60" stroke="#C8102E" stroke-width="6" />
+                </g>
+            </svg>
+        </p>
+    </footer>
 </body>
 </html>

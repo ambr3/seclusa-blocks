@@ -41,6 +41,7 @@ import socket
 import sys
 import os
 import re
+import threading
 import urllib.parse
 
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8080
@@ -133,61 +134,61 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
         sys.stderr.write("  %s\n" % (fmt % args))
 
 
-class DualStackServer(socketserver.ThreadingTCPServer):
-    """
-    Listens on IPv6 *and* IPv4, and serves more than one request at a time.
+# Loopback only. `::` and `0.0.0.0` used to accept LAN connections and then 403 them.
+LOOPBACK_HOSTS = ("127.0.0.1", "::1")
 
-    Threading is required: a game frame with a service worker, a canvas and sound
-    clips keeps several connections alive. A single-threaded server queues the next
-    game behind those keep-alives and the launcher shows "failed to load".
 
-    Binding :: with AF_INET6 accepts IPv4 as v4-mapped addresses, so localhost
-    works whether the browser prefers ::1 or 127.0.0.1.
-    """
+class LoopServer(socketserver.ThreadingTCPServer):
+    """Threaded so a service worker and the page can be in flight together."""
 
-    address_family = socket.AF_INET6
     allow_reuse_address = True
     daemon_threads = True
+
+
+class V6LoopServer(LoopServer):
+    address_family = socket.AF_INET6
 
     def server_bind(self):
         if hasattr(socket, "IPPROTO_IPV6") and hasattr(socket, "IPV6_V6ONLY"):
             try:
-                self.socket.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 0)
+                self.socket.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 1)
             except OSError:
                 pass
-        socketserver.TCPServer.server_bind(self)
+        super().server_bind()
 
 
-class IPv4Server(socketserver.ThreadingTCPServer):
-    """Fallback for a host with no usable IPv6 stack at all."""
-
-    allow_reuse_address = True
-    daemon_threads = True
-
-
-def pick_server():
-    """Dual-stack where possible, plain IPv4 otherwise."""
-    if socket.has_ipv6:
-        probe = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+def bind_loopback(handler, port):
+    """One server per loopback family that this host can bind."""
+    specs = ((LoopServer, "127.0.0.1"), (V6LoopServer, "::1"))
+    servers = []
+    errors = []
+    for cls, host in specs:
+        if host == "::1" and not socket.has_ipv6:
+            continue
         try:
-            probe.bind(("::1", 0))
-            return DualStackServer, "::"
-        except OSError:
-            pass
-        finally:
-            probe.close()
-    return IPv4Server, "0.0.0.0"
+            servers.append(cls((host, port), handler))
+        except OSError as err:
+            errors.append(err)
+    if not servers:
+        raise errors[-1]
+    return servers
 
 
 if __name__ == "__main__":
-    ServerClass, HOST = pick_server()
     handler = functools.partial(NoCacheHandler, directory=ROOT)
-
-    with ServerClass((HOST, PORT), handler) as httpd:
-        banner = [
-            f"Seclusa Blocks — dev server on http://127.0.0.1:{PORT}/  (caching disabled)",
-            f"  bound {HOST}  — local connections only; localhost and 127.0.0.1 both work",
-            "  framing headers from scripts/serve.py; document CSP is the HTML <meta>",
-        ]
-        print("\n".join(banner), flush=True)
-        httpd.serve_forever()
+    servers = bind_loopback(handler, PORT)
+    hosts = ", ".join(server.server_address[0] for server in servers)
+    banner = [
+        f"Seclusa Blocks — dev server on http://127.0.0.1:{PORT}/  (caching disabled)",
+        f"  bound {hosts}  — loopback only",
+        "  framing headers from scripts/serve.py; document CSP is the HTML <meta>",
+    ]
+    print("\n".join(banner), flush=True)
+    for extra in servers[1:]:
+        threading.Thread(target=extra.serve_forever, daemon=True).start()
+    try:
+        servers[0].serve_forever()
+    finally:
+        for server in servers:
+            server.shutdown()
+            server.server_close()

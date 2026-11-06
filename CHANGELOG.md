@@ -2,7 +2,22 @@
 
 All notable changes to **Seclusa Blocks**.
 
-## Unreleased
+## 0.1.1
+
+### Changed
+- No `_headers` or `.htaccess` in this app. GitHub Pages does not apply them. CSP, referrer, and permissions stay on the document; `frame-ancestors` is not valid in a meta tag
+
+### Fixed
+- A long line streak is kept. The meter stops at 6 (×2.0), which is also the highest value a saved run will accept
+- Opening another page no longer replaces the cached game. `/` and `index.html` update together, and only when that navigation is the game
+- A new service worker reloads this app’s own `sw.js`
+- The GPL link is `LICENSE.txt`, so the browser shows the licence instead of downloading it
+- App settings lists music and effects from `stand-help.js`, and **Clear local data** wipes the saved run, best score, and the prefs this game stores
+- Music and effect buttons show off while the master mute is off
+- A pressure-up toast names the new pressure
+- The dev server binds `127.0.0.1` and `::1` only
+
+## 0.1.0
 
 ### Added
 - Board clear/collapse + `placePiece` coverage in the hub `blockfall.test.js` suite

@@ -3,6 +3,11 @@ window.STAND_COPY = {
   "source": "https://github.com/ambr3/seclusa-blocks",
   "corner": "right",
   "sound": true,
+  "sounds": [
+    { "label": "Sound", "key": "ssc.pref_key_sound_enabled" },
+    { "label": "Music", "key": "blockfall-music-muted", "on": "false", "off": "true", "defaultOn": false },
+    { "label": "Sounds", "key": "blockfall-sfx-muted", "on": "false", "off": "true" }
+  ],
   "rules": [
     "Stack tools in the vault. A row clears only when every cell in it is full.",
     "Fourteen named tools on a 9\u00d716 vault. LINE clears a full row. QUAD is four rows in one lock.",

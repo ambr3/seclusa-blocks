@@ -17,8 +17,15 @@ export class AudioEngine {
 
     watchMasterSound() {
         window.addEventListener('storage', (event) => {
-            if (event.key !== null && event.key !== MASTER_SOUND_KEY) return;
+            if (event.key !== null && event.key !== MASTER_SOUND_KEY
+                && event.key !== MUSIC_MUTE_KEY && event.key !== SFX_MUTE_KEY) return;
             this.setMasterMuted(safeGet(MASTER_SOUND_KEY) === 'false');
+            const musicPref = safeGet(MUSIC_MUTE_KEY);
+            this.musicMuted = musicPref === null ? true : musicPref === 'true';
+            this.sfxMuted = safeGet(SFX_MUTE_KEY) === 'true';
+            if (this.musicMuted || this.masterMuted) this.stopMusic();
+            else this.startMusic();
+            window.dispatchEvent(new Event('blocks-sound'));
         });
     }
 

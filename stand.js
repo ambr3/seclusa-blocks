@@ -12,13 +12,19 @@
 
     var copy = window.STAND_COPY || {};
     var KEY_SOUND = "ssc.pref_key_sound_enabled";
-    var KEY_COLOR = "ssc.pref_key_theme_color";
     var KEY_NIGHT = "ssc.pref_key_night_mode";
+    var KEY_PALETTE = "ssc.pref_key_theme_color";
     var NIGHTS = ["system", "light", "dark"];
-    var PALETTES = [
-        "orange", "green", "blue", "purple",
-        "rose", "teal", "amber", "slate",
-        "navy", "indigo", "lime", "crimson"
+    var APP_KEYS = [
+        "blockfall-difficulty",
+        "blockfall-hand",
+        "blockfall-best-score",
+        "blockfall-game-state",
+        "blockfall-music-muted",
+        "blockfall-sfx-muted",
+        KEY_SOUND,
+        KEY_NIGHT,
+        KEY_PALETTE
     ];
 
     function read(key, fallback) {
@@ -48,6 +54,40 @@
         if (window.SeclusaGameTheme && typeof window.SeclusaGameTheme.apply === "function") {
             window.SeclusaGameTheme.apply();
         }
+    }
+
+    function soundSpecs() {
+        if (copy.sounds && copy.sounds.length) return copy.sounds;
+        return [{ label: "Sounds", key: KEY_SOUND }];
+    }
+
+    function soundIsOn(spec) {
+        var raw = read(spec.key, null);
+        if (spec.on) {
+            if (raw === null) return spec.defaultOn !== false;
+            return raw === spec.on;
+        }
+        return read(spec.key, "true") !== "false";
+    }
+
+    function soundStored(spec, turnOn) {
+        if (spec.on) return turnOn ? spec.on : (spec.off || "true");
+        return turnOn ? "true" : "false";
+    }
+
+    function clearAppData() {
+        var keys = APP_KEYS.slice();
+        soundSpecs().forEach(function (spec) {
+            if (spec.key && keys.indexOf(spec.key) < 0) keys.push(spec.key);
+        });
+        keys.forEach(function (key) {
+            try {
+                localStorage.removeItem(key);
+            } catch (err) {
+                /* private mode */
+            }
+        });
+        window.location.reload();
     }
 
     function el(tag, className, text) {
@@ -84,26 +124,24 @@
         scrim.addEventListener("click", close);
         sheet = el("div", "stand-sheet");
         sheet.setAttribute("role", "dialog");
-        sheet.setAttribute("aria-label", copy.name || "Game menu");
+        sheet.setAttribute("aria-label", "App settings");
 
         var closeBtn = el("button", "stand-close", "Close");
         closeBtn.type = "button";
         closeBtn.addEventListener("click", close);
         sheet.appendChild(closeBtn);
-        sheet.appendChild(el("h2", null, copy.name || "Game"));
 
-        if (copy.sound !== false) {
-            sheet.appendChild(el("h2", null, "Sound"));
-            var soundRow = el("div", "stand-row");
-            var on = read(KEY_SOUND, "true") !== "false";
-            soundRow.appendChild(choice(on ? "Sound on" : "Sound off", on, function () {
-                on = !on;
-                write(KEY_SOUND, on ? "true" : "false");
+        sheet.appendChild(el("h2", null, "Sounds"));
+        var soundRow = el("div", "stand-row");
+        soundSpecs().forEach(function (spec) {
+            var on = soundIsOn(spec);
+            soundRow.appendChild(choice(spec.label + (on ? " on" : " off"), on, function () {
+                write(spec.key, soundStored(spec, !on));
                 close();
                 open();
             }));
-            sheet.appendChild(soundRow);
-        }
+        });
+        sheet.appendChild(soundRow);
 
         sheet.appendChild(el("h2", null, "Theme"));
         var night = read(KEY_NIGHT, "system");
@@ -118,18 +156,6 @@
         });
         sheet.appendChild(nightRow);
 
-        var palette = read(KEY_COLOR, "navy");
-        var paletteRow = el("div", "stand-row");
-        PALETTES.forEach(function (name) {
-            var label = name.charAt(0).toUpperCase() + name.slice(1);
-            paletteRow.appendChild(choice(label, palette === name, function () {
-                write(KEY_COLOR, name);
-                close();
-                open();
-            }));
-        });
-        sheet.appendChild(paletteRow);
-
         sheet.appendChild(el("h2", null, "How to play"));
         (copy.rules || []).forEach(function (line) {
             sheet.appendChild(el("p", null, line));
@@ -139,17 +165,19 @@
         (copy.about || []).forEach(function (line) {
             sheet.appendChild(el("p", null, line));
         });
-        if (copy.source) {
-            var link = el("a", "stand-link", "Source");
-            link.href = copy.source;
-            link.target = "_blank";
-            link.rel = "noopener noreferrer";
-            sheet.appendChild(link);
-        }
+
+        sheet.appendChild(el("h2", null, "Data"));
+        var dataRow = el("div", "stand-row");
+        dataRow.appendChild(choice("Clear local data", false, function () {
+            if (!window.confirm("Clear scores and settings stored in this browser?")) return;
+            clearAppData();
+        }));
+        sheet.appendChild(dataRow);
 
         sheet.appendChild(el("h2", null, "Fullscreen"));
         var full = el("div", "stand-row");
-        full.appendChild(choice("Toggle fullscreen", false, function () {
+        var fullOn = !!(document.fullscreenElement || document.webkitFullscreenElement);
+        full.appendChild(choice(fullOn ? "Fullscreen on" : "Fullscreen off", fullOn, function () {
             var node = document.documentElement;
             var active = document.fullscreenElement || document.webkitFullscreenElement;
             var done = active
@@ -167,9 +195,9 @@
     }
 
     function boot() {
-        var button = el("button", "stand-more", "More");
+        var button = el("button", "stand-more", "App settings");
         button.type = "button";
-        button.setAttribute("aria-label", "Theme, sound, how to play and about");
+        button.setAttribute("aria-label", "App settings");
         if (copy.corner) button.setAttribute("data-corner", copy.corner);
         button.addEventListener("click", open);
         document.body.appendChild(button);

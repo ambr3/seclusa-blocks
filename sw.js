@@ -184,6 +184,7 @@ var ASSETS = [
     './',
     './index.html',
     './offline.html',
+    './LICENSE.txt',
     './manifest.json',
     './style.css',
     './js/main.js',
@@ -375,10 +376,17 @@ self.addEventListener('fetch', (e) => {
                 .then(() => fetch(e.request, { cache: 'no-store' }))
                 .then((res) => {
                     if (!isRealDocument(res)) return serveFromCache(e.request);
-                    const clone = res.clone();
-                    // waitUntil: respondWith settling can kill the worker before an
-                    // unwaited put lands, so the page that just loaded is missing offline.
-                    e.waitUntil(withCache().then((c) => c.put('./index.html', clone)).catch(() => {}));
+                    // Only the game document may refresh the shell slots. Caching every
+                    // navigation here used to store offline.html (and anything else) as
+                    // index.html, so the next offline open of that URL was the wrong page.
+                    if (rel === './' || rel === './index.html') {
+                        const indexCopy = res.clone();
+                        const rootCopy = res.clone();
+                        e.waitUntil(withCache().then((cache) => Promise.all([
+                            cache.put('./index.html', indexCopy),
+                            cache.put('./', rootCopy)
+                        ])).catch(() => {}));
+                    }
                     return res;
                 })
                 .catch(() => serveFromCache(e.request))
