@@ -2,6 +2,11 @@
 
 All notable changes to **Seclusa Blocks**.
 
+## 0.1.2
+
+### Fixed
+- iOS home-screen status bar uses `black` instead of `black-translucent`
+
 ## 0.1.1
 
 ### Changed
